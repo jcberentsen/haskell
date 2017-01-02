@@ -541,6 +541,14 @@ opGrad "Maximum" _ [toT -> x, toT -> y] [dz] =
     gx = CoreOps.select xmask dz (CoreOps.zerosLike dz)
     gy = CoreOps.select (CoreOps.logicalNot xmask) dz (CoreOps.zerosLike dz)
 
+-- Element wise minimum gradient
+opGrad "Minimum" _ [toT -> x, toT -> y] [dz] =
+    gradForBinaryCwise (x, gx) (y, gy)
+  where
+    xmask = CoreOps.lessEqual x y
+    gx = CoreOps.select xmask dz (CoreOps.zerosLike dz)
+    gy = CoreOps.select (CoreOps.logicalNot xmask) dz (CoreOps.zerosLike dz)
+
 opGrad "Sum" _ [toT -> x, toT -> indices] [dz] =
     [ Just $ CoreOps.tile grad tileScaling, Nothing ]
   where
@@ -694,14 +702,15 @@ opGrad "OneHot" _ _ _ = [Nothing, Nothing, Nothing, Nothing]
 opGrad "TruncatedNormal" _ _ _ = [Nothing]
 
 opGrad "RefIdentity" _ _ [dz] = [Just $ expr dz]
-opGrad "Cast" nodeDef _ [dz] = [Just reverseCast]
-  where
-    -- TODO(gnezdo): too permissive, python only allows float types as src_type.
-    reverseCast =
-        pureOp [] $ pure (opDef "Cast"
-                 & opAttr "DstT" .~ (lookupAttr nodeDef "SrcT" :: ByteString)
-                 & opAttr "SrcT" .~ (lookupAttr nodeDef "DstT" :: ByteString)
-                 & opInputs .~ [renderedOutput dz])
+opGrad "Cast" nodeDef _ [dz] = [Nothing]
+-- opGrad "Cast" nodeDef _ [dz] = [Just reverseCast]
+--   where
+--     -- TODO(gnezdo): too permissive, python only allows float types as src_type.
+--     reverseCast =
+--         pureOp [] $ pure (opDef "Cast"
+--                  & opAttr "DstT" .~ (lookupAttr nodeDef "SrcT" :: ByteString)
+--                  & opAttr "SrcT" .~ (lookupAttr nodeDef "DstT" :: ByteString)
+--                  & opInputs .~ [renderedOutput dz])
 
 opGrad "DynamicStitch" nodeDef inputs [dz] =
     replicate halfLen Nothing ++ valuesGrads
@@ -811,6 +820,27 @@ opGrad n nodeDef ins grads =
     error $ "no gradient implemented for " ++
             show (n, length ins, length grads, showMessage nodeDef, ins)
 
+minimumMaximumGrad :: forall a. GradientCompatible a
+    => Tensor Build a
+    -> Tensor Build a
+    -> Tensor Value a
+    -> (Tensor Build a -> Tensor Build a -> Tensor Build Bool)
+    -> [Maybe (Tensor Build a)]
+minimumMaximumGrad x y dz selectorOp =
+    [Just gx, Just gy]
+  where
+    sx = shape x
+    sy = shape y
+    sd = shape dz
+    zeros = CoreOps.fill sd 0 :: Tensor Build a
+    xmask = selectorOp x y
+    ymask = CoreOps.logicalNot xmask
+    (rx, ry) = broadcastGradientArgs sx sy
+    xgrad = CoreOps.select xmask dz zeros
+    ygrad = CoreOps.select ymask dz zeros
+    gx = reshape (sum xgrad rx) sx
+    gy = reshape (sum ygrad ry) sy
+
 -- | The number of outputs for an op type.
 numOutputs :: NodeDef -> OutputIx
 numOutputs o =
@@ -838,8 +868,10 @@ numOutputs o =
         "Max" -> 1
         "Maximum" -> 1
         "MaxPool" -> 1
+        "Maximum" -> 1
         "Mean" -> 1
         "Min" -> 1
+        "Minimum" -> 1
         "Mul" -> 1
         "Neg" -> 1
         "Placeholder" -> 1
