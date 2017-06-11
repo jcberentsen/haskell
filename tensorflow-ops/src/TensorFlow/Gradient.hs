@@ -790,6 +790,7 @@ opGrad "Tile" _ [toT -> x, toT -> multiples] [dz] =
     reshapedDz = CoreOps.reshape dz splitShape
 
 opGrad "ZerosLike" _ _ _ = [Nothing]
+opGrad "Floor" _ _ _ = [Nothing]
 opGrad "Fill" _ _ [dz] = [Nothing, Just $ sum dz rx]
   where
     rx = rangeOfRank dz
@@ -830,6 +831,7 @@ numOutputs o =
         "Gather" -> 1
         "LabelClasses" -> 1
         "Fill" -> 1
+        "Floor" -> 1
         "LabelWeights" -> 1
         "Log" -> 1
         "MatMul" -> 1
