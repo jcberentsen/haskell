@@ -82,6 +82,17 @@ There is also a demo application:
     cd tensorflow-mnist
     stack --docker --docker-image=$IMAGE_NAME build --exec Main
 
+If you want to use GPU you can do:
+
+    IMAGE_NAME=tensorflow/haskell:1.0.1-gpu
+    docker build -t $IMAGE_NAME docker/gpu
+
+We need stack to use nvidia-docker by using a 'docker' wrapper script.
+
+    ln -s `pwd`/tools/nvidia-docker-wrapper.sh <somewhere in your path>/docker
+    stack --docker --docker-image=$IMAGE_NAME setup
+    stack --docker --docker-image=$IMAGE_NAME test
+
 ## Build on macOS
 
 Run the [install_macos_dependencies.sh](./tools/install_macos_dependencies.sh)
