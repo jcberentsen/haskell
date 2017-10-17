@@ -106,6 +106,8 @@ module TensorFlow.Ops
     , reducedShape
     , reduceMean
     , reduceMean'
+    , reduceSum
+    , reduceSum'
     , CoreOps.relu
     , CoreOps.relu'
     , CoreOps.reluGrad
@@ -134,10 +136,6 @@ module TensorFlow.Ops
     , CoreOps.sub'
     , CoreOps.sum
     , CoreOps.sum'
-    , reduceMean
-    , reduceMean'
-    , reduceSum
-    , reduceSum'
     , CoreOps.transpose
     , CoreOps.transpose'
     , truncatedNormal
@@ -329,7 +327,7 @@ allAxes :: TensorType a => Tensor v a -> Tensor Build Int32
 allAxes x = CoreOps.range 0 (CoreOps.rank x :: Tensor Build Int32) 1
 
 -- | Sum a tensor down to a scalar
--- Seee `TensorFlow.GenOps.Core.sum`
+-- See `TensorFlow.GenOps.Core.sum`
 reduceSum :: (OneOf '[ Double, Float, Int32, Int64
                      , Complex Float, Complex Double] a) =>
              Tensor v a -> Tensor Build a
@@ -341,7 +339,7 @@ reduceSum' :: (OneOf '[ Double, Float, Int32, Int64
 reduceSum' params x = CoreOps.sum' params x (allAxes x)
 
 -- | Mean of all elements of a tensor.
--- Seee `TensorFlow.GenOps.Core.mean`
+-- See `TensorFlow.GenOps.Core.mean`
 reduceMean :: (OneOf '[ Double, Float, Int32, Int64
                      , Complex Float, Complex Double] a) =>
              Tensor v a -> Tensor Build a
@@ -352,22 +350,6 @@ reduceMean' :: (OneOf '[ Double, Float, Int32, Int64
               OpParams -> Tensor v a -> Tensor Build a
 reduceMean' params x = CoreOps.mean' params x (allAxes x)
 
--- | Computes the mean of elements across dimensions of a tensor.
--- See `TensorFlow.GenOps.Core.mean`
-reduceMean
-  :: ( TensorType a
-     , OneOf '[ Double, Float, Complex Float, Complex Double] a
-     )
-  => Tensor v a -> Tensor Build a
-reduceMean = reduceMean' id
-
-reduceMean'
-  :: ( TensorType a
-     , OneOf '[ Double, Float, Complex Float, Complex Double] a
-     )
-  => OpParams -> Tensor v a -> Tensor Build a
-reduceMean' params x = CoreOps.mean' params x allAxes
-  where allAxes = CoreOps.range 0 (CoreOps.rank x :: Tensor Build Int32) 1
 
 -- | Create a constant vector.
 vector :: TensorType a => [a] -> Tensor Build a
@@ -431,7 +413,7 @@ reducedShape inputShape axes =
            CoreOps.fill axesShape 1]              -- [1, 1]
 
 
-    
+
 globalNorm :: [Tensor v Float] -> Tensor Build Float
 globalNorm = CoreOps.sqrt . reduceSum . pack 0 . map CoreOps.l2Loss
 
@@ -440,7 +422,7 @@ clipByGlobalNorm clipNorm xs =
     map (CoreOps.mul scale) xs
   where
     scale = CoreOps.minimum (clipNorm `CoreOps.div` globalNorm xs) 1
-    
+
 pack :: TensorType t => Int64 -> [Tensor v t] -> Tensor Build t
 pack axis = CoreOps.pack' (opAttr "axis" .~ (axis :: Int64))
 
