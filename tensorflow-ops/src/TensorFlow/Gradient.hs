@@ -868,7 +868,6 @@ numOutputs o =
         "Max" -> 1
         "Maximum" -> 1
         "MaxPool" -> 1
-        "Maximum" -> 1
         "Mean" -> 1
         "Min" -> 1
         "Minimum" -> 1
@@ -894,7 +893,6 @@ numOutputs o =
         "VarHandleOp" -> 1
         "Variable" -> 1
         "ZerosLike" -> 1
-        "Fill" -> 1
         "Pack" -> 1
         "Unpack" -> fromIntegral (lookupAttr o "N" :: Int64)
         "Tanh" -> 1
