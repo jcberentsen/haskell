@@ -1,4 +1,4 @@
-FROM tensorflow/haskell:v0
+FROM tensorflow/haskell:1.0.1-gpu
 
 RUN \
     apt-get update && \
